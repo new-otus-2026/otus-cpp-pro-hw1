@@ -5,8 +5,11 @@ on:
     branches:
       - master
       - feature/github_actions
+  workflow_dispatch:		# запуск вручную
 
-# Фикс ошибки "Resource not accessible": явно разрешить создавать релизы и теги
+# Фикс ошибки "Resource not accessible": явно разрешить создавать теги и публиковать релизы.
+# Теперь GitHub Actions по умолчанию ограничивает права токена GITHUB_TOKEN.
+# Для создания релизов ему теперь нужно явно выдать права на запись (contents: write)
 permissions:
   contents: write
 
@@ -14,18 +17,30 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Project checkout
       # Замена v2 на v4 (работает на современной Node.js)
-      - uses: actions/checkout@v4
+        uses: actions/checkout@v4
         with:
           submodules: true
-
-      - run: sudo apt-get update && sudo apt-get install libboost-test-dev -y
-      - run: cmake . -DPATCH_VERSION=${{ github.run_number }} -DWITH_BOOST_TEST=ON
-      - run: cmake --build .
-      - run: cmake --build . --target test
-      - run: cmake --build . --target package
-
-      # Создание релиза и загрузка .deb объединены в один современный шаг
+      - name: GTest download
+        run: git clone https://github.com/google/googletest.git googletest
+      - name: GTest compile and install
+        working-directory: ./googletest
+        run: |
+          sudo cmake .
+          sudo cmake --build . --target install
+      - name: Project build
+        run: |
+          cmake . -DPATCH_VERSION=${{ github.run_number }}
+          cmake --build .
+          cmake --build . --target test
+          cmake --build . --target package
+      # Создание релиза и загрузка .deb объединены в один современный шаг.
+      # Автоматически понимает переменную ${{ secrets.GITHUB_TOKEN }},
+      # передавать её вручную через env: больше не нужно.
+      # Через параметр files указывается путь к .deb пакету: 
+      # экшен создаст релиз и прикрепит к нему этот файл за один проход.
+      # Тип контента (asset_content_type) определяет автоматически по расширению .deb.
       - name: Create Release and Upload Asset
         uses: softprops/action-gh-release@v2
         with:
