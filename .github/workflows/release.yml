@@ -18,17 +18,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Project checkout
-      # Замена v2 на v4 (работает на современной Node.js)
-        uses: actions/checkout@v4
+      # Замена v2 на v7 (работает на современной Node.js)
+        uses: actions/checkout@v7
         with:
           submodules: true
-      - name: GTest download
-        run: git clone https://github.com/google/googletest.git googletest
-      - name: GTest compile and install
-        working-directory: ./googletest
-        run: |
-          sudo cmake .
-          sudo cmake --build . --target install
+      # Виртуальные машины GitHub Actions (ubuntu-latest) поставляются с набором предустановленных библиотек, включая GTest. 
+      # Следующие два шага (GTest download и GTest compile and install) можно удалить. 
+      #- name: GTest download
+      #  run: git clone https://github.com/google/googletest.git googletest
+      #- name: GTest compile and install
+      #  working-directory: ./googletest
+      #  run: |
+      #    sudo cmake .
+      #    sudo cmake --build . --target install
       - name: Project build
         run: |
           cmake . -DPATCH_VERSION=${{ github.run_number }}
@@ -42,7 +44,7 @@ jobs:
       # экшен создаст релиз и прикрепит к нему этот файл за один проход.
       # Тип контента (asset_content_type) определяет автоматически по расширению .deb.
       - name: Create Release and Upload Asset
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v0.0.${{ github.run_number }}
           name: Release 0.0.${{ github.run_number }}
